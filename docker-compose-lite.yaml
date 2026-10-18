@@ -55,8 +55,6 @@ services:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - ${HOME}/.Xauthority:/home/gcs/.Xauthority:ro
       - /etc/machine-id:/etc/machine-id:ro
-    devices:
-      - /dev/dri:/dev/dri
     build:
       context: .
       dockerfile: ./ground-control-station/lite/Dockerfile

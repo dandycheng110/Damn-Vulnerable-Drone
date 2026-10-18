@@ -47,12 +47,15 @@ services:
       - XDG_RUNTIME_DIR=/tmp
       - XAUTHORITY=/home/gcs/.Xauthority
       - HEADLESS=0
+      - LD_LIBRARY_PATH=/usr/lib/wsl/lib
+      - MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - ${HOME}/.Xauthority:/home/gcs/.Xauthority:ro
       - /etc/machine-id:/etc/machine-id:ro
+      - /usr/lib/wsl:/usr/lib/wsl:ro
     devices:
-      - /dev/dri:/dev/dri
+      - /dev/dxg:/dev/dxg
     build:
       context: .
       dockerfile: ./ground-control-station/Dockerfile
