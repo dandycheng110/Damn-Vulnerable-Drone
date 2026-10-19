@@ -18,6 +18,7 @@ The Damn Vulnerable Drone is an intentionally vulnerable drone hacking simulator
   * [Getting Docker](#getting-docker-key-dependency)
   * [Wi-Fi Mode](#wi-fi-mode)
   * [Non-Wi-Fi Mode](#non-wi-fi-mode)
+  * [Experimental: Gazebo Harmonic Simulator](#experimental-gazebo-harmonic-simulator)
 * [Architecture](#architecture)
 * [Flight States](#flight-states)
 * [Attack Scenarios](#attack-scenarios)
@@ -239,6 +240,29 @@ Unlike "Wi-Fi Mode" you are not limited to only running "Non-Wi-Fi Mode" within 
 
 > [!IMPORTANT]  
 > Not, "Non-Wi-Fi Mode" does not support wifi simulations and you will need to assume that you have an established initial access foothold on the drone data-link connection (via the 10.13.0.0/24 network)
+
+### Experimental: Gazebo Harmonic Simulator
+
+An optional replacement for the Full mode `simulator` container, built on currently supported releases: Gazebo Harmonic (gz-sim 8), ROS 2 Humble, the official [ardupilot_gazebo](https://github.com/ArduPilot/ardupilot_gazebo) plugin (SITL over the JSON protocol) and a gzweb 3 based 3D viewer. The flight controller, companion computer and ground control station containers are unchanged, and the stages, the companion's camera stream and gimbal control, and the attack scenarios work as before.
+
+It is not wired into `start.sh` yet. Start it with Docker Compose (Non-Wi-Fi Mode):
+
+```
+docker compose up -d flight-controller companion-computer ground-control-station
+docker compose -f docker-compose.harmonic.yaml up -d --build
+```
+
+Then open http://localhost:8000 as usual. To stop it:
+
+```
+docker compose -f docker-compose.harmonic.yaml down
+docker compose down
+```
+
+- It takes the Classic simulator's address (`10.13.0.5`) and ports (8000, 8080), so stop the Classic `simulator` container first. Set `DVD_VIEWER_PORT` to publish the 3D viewer on a different host port.
+- Both ports are bound to `127.0.0.1` only.
+- Rendering is headless. With no GPU passed into the container, Mesa llvmpipe renders on the CPU: flights work at real time, but the drone camera drops to about 6 Hz (10 Hz with a GPU). GPU access is host specific; add it with a Compose override file.
+- Tested on x86_64 only, with Non-Wi-Fi Mode. Simulator tests are in `simulator/harmonic/tests/`.
 
 ## Architecture
 

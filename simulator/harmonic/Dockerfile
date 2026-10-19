@@ -1,11 +1,12 @@
 # SIMULATOR CONTAINER (Harmonic) — Gazebo Harmonic + ROS 2 Humble on Ubuntu 22.04
 #
-# Replaces the Classic 11 / Foxy / gzweb 1.4 simulator in simulator/Dockerfile.
-# P1: base runtime (gz sim, ros_gz, Mesa with the d3d12 driver for WSL2).
-# P2: official ardupilot_gazebo plugin, DVD world and models in SDF 1.9, and
-#     dvd_sim_bridge.py (camera + gimbal glue to ROS 2).
-# P4: 3D viewer on :8080 (gzweb 3 + gz-launch websocket, behind nginx) and the
-#     mgmt app on :8000, both moved in from the Classic simulator container.
+# Alternative to the Classic 11 / Foxy / gzweb 1.4 simulator in
+# simulator/Dockerfile (see docker-compose.harmonic.yaml):
+#   - gz sim 8, ros_gz, Mesa for headless EGL rendering
+#   - the official ardupilot_gazebo plugin, DVD world and models in SDF 1.9,
+#     and dvd_sim_bridge.py (camera + gimbal glue to ROS 2)
+#   - 3D viewer on :8080 (gzweb 3 + gz-launch websocket, behind nginx) and the
+#     mgmt app on :8000, as in the Classic simulator container
 
 # --- 3D viewer bundle (build stage only; no Node in the runtime image) -----
 FROM node:20-bookworm-slim AS viewer
@@ -56,14 +57,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 # mgmt app (same packages as the Classic simulator image) + nginx for :8080.
-RUN apt-get update && apt-get install -y --no-install-recommends nginx &&     rm -f /etc/nginx/sites-enabled/default &&     rm -rf /var/lib/apt/lists/* &&     pip3 install --no-cache-dir         Flask         flask-cors         Flask-SQLAlchemy         requests         flask-sock         "python-socketio[client]==5.11.2"         docker
+RUN apt-get update && apt-get install -y --no-install-recommends nginx && \
+    rm -f /etc/nginx/sites-enabled/default && \
+    rm -rf /var/lib/apt/lists/* && \
+    pip3 install --no-cache-dir \
+        Flask \
+        flask-cors \
+        Flask-SQLAlchemy \
+        requests \
+        flask-sock \
+        "python-socketio[client]==5.11.2" \
+        docker
 
-# WSL2: the GPU is /dev/dxg and the user-mode driver lives in /usr/lib/wsl/lib
-# (mounted by docker-compose.harmonic.yaml). Mesa's d3d12 driver renders on it.
-ENV __GLX_VENDOR_LIBRARY_NAME=mesa \
-    MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA \
-    LD_LIBRARY_PATH=/usr/lib/wsl/lib \
-    RMW_IMPLEMENTATION=rmw_cyclonedds_cpp \
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp \
     ROS_DOMAIN_ID=42
 
 # Model lookup order: DVD models first, then the official ardupilot_gazebo
@@ -83,7 +89,6 @@ COPY simulator/harmonic/models/           /Simulator/models/
 COPY simulator/harmonic/worlds/           /Simulator/worlds/
 COPY simulator/harmonic/dvd_sim_bridge.py simulator/harmonic/start.sh /Simulator/
 RUN chmod +x /Simulator/start.sh
-COPY simulator/harmonic/p1_camera_test.sdf /Simulator/test/p1_camera_test.sdf
 # Same unicast-peer DDS config as the Classic simulator (multicast is off on
 # the simulator network); the compose file points CYCLONEDDS_URI at it.
 COPY simulator/conf/cyclonedds.xml /etc/cyclonedds.xml

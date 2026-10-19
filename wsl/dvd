@@ -12,7 +12,7 @@ set -uo pipefail
 DVD_DIR="$HOME/Damn-vulnerable-Drone"
 FULL=(docker compose -f docker-compose.yaml -f docker-compose.wsl-gpu.yaml)
 LITE=(docker compose -f docker-compose-lite.yaml)
-HARM=(docker compose -f docker-compose.harmonic.yaml)
+HARM=(docker compose -f docker-compose.harmonic.yaml -f docker-compose.harmonic.wsl-gpu.yaml)
 # Classic 服務裡 harmonic 模式沿用的部分（simulator 由 simulator-harmonic 取代）
 HARM_CLASSIC=(flight-controller companion-computer ground-control-station)
 export WIFI_ENABLED=false

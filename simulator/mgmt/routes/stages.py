@@ -58,7 +58,7 @@ def reset_gz_world():
     posting it, so here the reset is done server side instead. mgmt runs in
     the simulator-harmonic container, next to gz sim.
     """
-    cmd =["gz", "service", "-s", "/world/default/control",
+    cmd = ["gz", "service", "-s", "/world/default/control",
            "--reqtype", "gz.msgs.WorldControl", "--reptype", "gz.msgs.Boolean",
            "--timeout", "5000", "--req", "reset: {all: true}"]
     try:

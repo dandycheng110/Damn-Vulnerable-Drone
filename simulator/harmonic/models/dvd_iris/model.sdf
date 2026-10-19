@@ -6,7 +6,8 @@
   - airframe: official iris_with_standoffs (SDF 1.9)
   - libLiftDragPlugin      -> gz-sim-lift-drag-system (same coefficients)
   - libArduPilotPlugin     -> official ArduPilotPlugin, JSON protocol
-                              (SITL uses the JSON frame, see P3)
+                              (SITL runs with model JSON, see stage 1
+                              in simulator/mgmt/routes/stages.py)
   - gazebo_ros_joint_pose_trajectory -> two JointPositionController systems;
     simulator/harmonic/dvd_sim_bridge.py keeps the companion's
     /set_joint_trajectory interface unchanged.

@@ -1,12 +1,13 @@
 #!/bin/bash
 # Harmonic simulator entrypoint. Logs go to /var/log/dvd/.
-#   gz sim server      headless, ogre2 via EGL on the WSL2 d3d12 GPU
+#   gz sim server      headless, ogre2 via EGL (a GPU if one is passed in,
+#                      otherwise Mesa llvmpipe)
 #   dvd_sim_bridge.py  camera + gimbal glue to ROS 2
 #   gz launch          websocket server for the 3D viewer (:9090, internal)
 #   nginx              :8080 viewer page + /ws proxy
 #   mgmt               :8000 DVD management app (set DVD_MGMT=0 to skip)
 #
-# DVD_WORLD can point at another SDF (e.g. /Simulator/test/p1_camera_test.sdf).
+# DVD_WORLD can point at another SDF (default: the DVD world).
 # The container exits when any of these dies, so `docker logs` / the files
 # in /var/log/dvd show which one.
 # setup.bash reads unset variables, so source it before enabling set -u.

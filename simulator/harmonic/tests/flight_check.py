@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""P3 flight smoke test: GUIDED -> arm -> takeoff -> hover -> LAND.
+"""Flight smoke test: GUIDED -> arm -> takeoff -> hover -> LAND.
 
 Run inside the flight-controller container while SITL is up with
 --model JSON (serial0 is the companion UART, so use SITL's serial1):
