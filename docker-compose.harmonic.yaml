@@ -1,12 +1,14 @@
 # Harmonic migration (work in progress).
-# P1: simulator runtime; P2: world, models, ArduPilot plugin; P3: SITL over JSON.
+# P1: simulator runtime; P2: world, models, ArduPilot plugin; P3: SITL over JSON;
+# P4: 3D viewer (:8080) and mgmt (:8000) inside simulator-harmonic.
 # 用法：docker compose -f docker-compose.harmonic.yaml up -d --build
 #
-# P3 起 simulator-harmonic 佔用 Classic simulator 的位置（simulator 網段
-# 10.13.0.5，flight-controller 的 SITL 連 10.13.0.5:9002，DDS peer 也是這個 IP），
-# 所以 Classic 的 simulator 容器要先停，兩者不能同時開。其他 Classic 容器
-# （flight-controller、companion-computer、ground-control-station）照常用
-# docker-compose.yaml 起，網段是同一個（external: simulator）。
+# simulator-harmonic 佔用 Classic simulator 的位置（simulator 網段
+# 10.13.0.5，flight-controller 的 SITL 連 10.13.0.5:9002，DDS peer 也是這個 IP；
+# 8000/8080 也同埠），所以 Classic 的 simulator 容器要先停，兩者不能同時開。
+# 其他 Classic 容器（flight-controller、companion-computer、
+# ground-control-station）照常用 docker-compose.yaml 起，網段是同一個
+# （external: simulator）。
 name: dvd-harmonic
 services:
   simulator-harmonic:
@@ -15,15 +17,26 @@ services:
     build:
       context: .
       dockerfile: ./simulator/harmonic/Dockerfile
+    # Same port numbers as Classic (the mgmt page and its iframe hard-code
+    # localhost:8000 / localhost:8080), but bound to localhost only.
+    ports:
+      - "127.0.0.1:8000:8000" # mgmt
+      - "127.0.0.1:8080:8080" # 3D viewer (+ /ws websocket)
     environment:
       - DISPLAY=:100
       - ROS_DOMAIN_ID=42
       - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
       - CYCLONEDDS_URI=file:///etc/cyclonedds.xml
+      - LITE=false
+      - HARMONIC=true
+      - WIFI_ENABLED
     devices:
       - /dev/dxg:/dev/dxg
     volumes:
       - /usr/lib/wsl:/usr/lib/wsl:ro
+      # mgmt drives the other containers through the Docker API, as in Classic.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./simulator/mgmt:/Simulator/mgmt
     networks:
       simulator:
         ipv4_address: 10.13.0.5

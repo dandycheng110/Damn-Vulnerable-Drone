@@ -218,7 +218,16 @@
       <fdm_addr>0.0.0.0</fdm_addr>
       <fdm_port_in>9002</fdm_port_in>
       <connectionTimeoutMaxCount>5</connectionTimeoutMaxCount>
-      <lock_step>1</lock_step>
+      <!--
+        No lock-step, like the Classic DVD plugin. With lock_step 1 the
+        plugin waits for SITL on every physics step and never gives up once
+        SITL has connected, so killing SITL (mgmt /reset, or an attack that
+        crashes the flight controller) freezes the whole world. Without it the
+        plugin drops the controller after connectionTimeoutMaxCount misses and
+        the drone falls, as in Classic. Measured: same takeoff/hover/land
+        figures as lock_step 1 at RTF ~1.0.
+      -->
+      <lock_step>0</lock_step>
       <no_time_sync>1</no_time_sync>
 
       <!-- Require by ArduPilot: change model and gazebo from XYZ to XY-Z -->

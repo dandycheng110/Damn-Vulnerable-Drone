@@ -157,9 +157,11 @@
       <pose>0 0 0.215 0 0 0</pose>
     </include>
 
+    <!-- Visual only. 2 cm up (Classic: 1 cm) so its top does not z-fight
+         with the runway plane in the web viewer. -->
     <model name="launch_pad">
       <static>true</static>
-      <pose>0 0 0.01 0 0 0</pose>
+      <pose>0 0 0.02 0 0 0</pose>
       <link name="base">
         <visual name="visual">
           <geometry>

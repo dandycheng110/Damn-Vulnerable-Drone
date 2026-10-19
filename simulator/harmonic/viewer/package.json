@@ -1,0 +1,22 @@
+{
+  "name": "dvd-harmonic-viewer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DVD 3D viewer for Gazebo Harmonic (gzweb SceneManager over the gz-launch websocket server). Replaces the Classic gzweb 1.4 page on port 8080.",
+  "//": [
+    "@babel/runtime: imported by three-nebula (a gzweb dependency) but not declared by it.",
+    "protobufjs: same version gzweb resolves to; src/protoFixups.js patches that single instance.",
+    "call-import-namespace is silenced: gzweb's bundle does `new JSZip()` on a namespace import, which only breaks Scene.createThumbnails(); the viewer never calls it."
+  ],
+  "scripts": {
+    "build": "esbuild src/main.js --bundle --minify --sourcemap --target=es2020 --log-override:call-import-namespace=silent --outfile=dist/viewer.js && cp index.html dist/index.html"
+  },
+  "dependencies": {
+    "@babel/runtime": "7.26.0",
+    "gzweb": "3.0.2",
+    "protobufjs": "6.11.6"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.2"
+  }
+}

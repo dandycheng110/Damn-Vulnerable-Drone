@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
-# dvd：在這台 WSL 桌機上切換 Damn Vulnerable Drone（full / lite）
+# dvd：在這台 WSL 桌機上切換 Damn Vulnerable Drone（full / lite / harmonic）
 #   full 走 docker-compose.wsl-gpu.yaml，Gazebo 用 Mesa d3d12 → RTX 5070。
 #   full 的 gzweb 佔 8080，跟 SAUVC 的 web_video_server 撞埠，所以 start full 前會先 sauvc-sim stop。
-#   兩種模式都佔 8000/3000，切換時先停另一種（stop，不 down，容器保留）。
+#   harmonic：Classic 的 flight-controller / companion / GCS + simulator-harmonic
+#   （docker-compose.harmonic.yaml，取代 Classic simulator 的 10.13.0.5 與 8000/8080）。
+#   三種模式都佔 8000/3000，切換時先停其他模式（stop，不 down，容器保留）。
 set -uo pipefail
 
 DVD_DIR="$HOME/Damn-vulnerable-Drone"
 FULL=(docker compose -f docker-compose.yaml -f docker-compose.wsl-gpu.yaml)
 LITE=(docker compose -f docker-compose-lite.yaml)
+HARM=(docker compose -f docker-compose.harmonic.yaml)
+# Classic 服務裡 harmonic 模式沿用的部分（simulator 由 simulator-harmonic 取代）
+HARM_CLASSIC=(flight-controller companion-computer ground-control-station)
 export WIFI_ENABLED=false
 
 say()  { printf '==> %s\n' "$*"; }
@@ -25,27 +30,45 @@ wait_http() {   # wait_http <port> <秒>
 case "${1:-status}" in
   start|start-full)
     say "停 SAUVC 模擬（讓出 8080）"; "$HOME/bin/sauvc-sim" stop >/dev/null 2>&1 || true
-    say "停 DVD lite";               "${LITE[@]}" stop >/dev/null 2>&1
+    say "停 DVD lite / harmonic";    "${LITE[@]}" stop >/dev/null 2>&1; "${HARM[@]}" stop >/dev/null 2>&1
     say "啟動 DVD full（GPU）";      "${FULL[@]}" up -d 2>&1 | grep -vE 'orphan' | tail -4
     wait_http 8080 90 && say "gzweb 8080 就緒" || say "gzweb 8080 90 秒內沒回應，看 dvd logs"
     wait_http 8000 60 && say "管理頁 8000 就緒" ;;
   start-lite)
-    say "停 DVD full"; "${FULL[@]}" stop >/dev/null 2>&1
+    say "停 DVD full / harmonic"; "${FULL[@]}" stop >/dev/null 2>&1; "${HARM[@]}" stop >/dev/null 2>&1
     say "啟動 DVD lite"; "${LITE[@]}" up -d 2>&1 | grep -vE 'orphan' | tail -4
     wait_http 8000 60 && say "管理頁 8000 就緒" ;;
+  start-harmonic)
+    say "停 SAUVC 模擬（讓出 8080）"; "$HOME/bin/sauvc-sim" stop >/dev/null 2>&1 || true
+    say "停 DVD lite 與 Classic simulator"
+    "${LITE[@]}" stop >/dev/null 2>&1; "${FULL[@]}" stop simulator >/dev/null 2>&1
+    say "啟動 Classic 飛控 / companion / GCS"
+    "${FULL[@]}" up -d --no-build --pull never "${HARM_CLASSIC[@]}" 2>&1 | grep -vE 'orphan' | tail -3
+    say "啟動 simulator-harmonic"
+    "${HARM[@]}" up -d 2>&1 | grep -vE 'orphan' | tail -2
+    wait_http 8080 90 && say "3D 檢視 8080 就緒" || say "8080 90 秒內沒回應，看 dvd logs"
+    wait_http 8000 60 && say "管理頁 8000 就緒" ;;
   stop)
-    say "停 DVD（full 與 lite）"
-    "${FULL[@]}" stop >/dev/null 2>&1; "${LITE[@]}" stop >/dev/null 2>&1
+    say "停 DVD（full、lite 與 harmonic）"
+    "${FULL[@]}" stop >/dev/null 2>&1; "${LITE[@]}" stop >/dev/null 2>&1; "${HARM[@]}" stop >/dev/null 2>&1
     say "已停止。要回 SAUVC：sauvc-sim start" ;;
   status)
     docker ps --format '{{.Names}}\t{{.Status}}' | grep -E 'simulator|flight-controller|companion-computer|ground-control-station' \
         || echo "DVD 沒在跑"
     if docker ps --format '{{.Names}}' | grep -qx simulator; then
         docker exec simulator sh -c 'grep -h GL_RENDERER /root/.gazebo/ogre.log 2>/dev/null | tail -1'
+    fi
+    if docker ps --format '{{.Names}}' | grep -qx simulator-harmonic; then
+        docker exec simulator-harmonic sh -c 'timeout 6 gz topic -e -t /stats -n 1 | grep real_time_factor'
     fi ;;
   logs)
-    c=simulator; docker ps --format '{{.Names}}' | grep -qx simulator-lite && c=simulator-lite
-    docker logs --tail "${2:-80}" "$c" ;;
+    if docker ps --format '{{.Names}}' | grep -qx simulator-harmonic; then
+        # 各服務的 log 在容器內 /var/log/dvd/（gz-sim、dvd_sim_bridge、websocket、nginx、mgmt）
+        docker exec simulator-harmonic sh -c "tail -n ${2:-40} /var/log/dvd/gz-sim.log /var/log/dvd/mgmt.log"
+    else
+        c=simulator; docker ps --format '{{.Names}}' | grep -qx simulator-lite && c=simulator-lite
+        docker logs --tail "${2:-80}" "$c"
+    fi ;;
   *)
-    echo "用法：dvd [start|start-full|start-lite|stop|status|logs [行數]]"; exit 2 ;;
+    echo "用法：dvd [start|start-full|start-lite|start-harmonic|stop|status|logs [行數]]"; exit 2 ;;
 esac
