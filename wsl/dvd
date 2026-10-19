@@ -3,7 +3,9 @@
 #   full 走 docker-compose.wsl-gpu.yaml，Gazebo 用 Mesa d3d12 → RTX 5070。
 #   full 的 gzweb 佔 8080，跟 SAUVC 的 web_video_server 撞埠，所以 start full 前會先 sauvc-sim stop。
 #   harmonic：Classic 的 flight-controller / companion / GCS + simulator-harmonic
-#   （docker-compose.harmonic.yaml，取代 Classic simulator 的 10.13.0.5 與 8000/8080）。
+#   （docker-compose.harmonic.yaml，取代 Classic simulator 的 10.13.0.5 與 8000）。
+#   harmonic 的 3D 檢視改綁 8090（DVD_VIEWER_PORT），可以跟 SAUVC 模擬同時開；
+#   Mac 通道：-L 8000:localhost:8000 -L 3000:localhost:3000 -L 8090:localhost:8090
 #   三種模式都佔 8000/3000，切換時先停其他模式（stop，不 down，容器保留）。
 set -uo pipefail
 
@@ -14,6 +16,7 @@ HARM=(docker compose -f docker-compose.harmonic.yaml)
 # Classic 服務裡 harmonic 模式沿用的部分（simulator 由 simulator-harmonic 取代）
 HARM_CLASSIC=(flight-controller companion-computer ground-control-station)
 export WIFI_ENABLED=false
+export DVD_VIEWER_PORT=8090   # harmonic 3D 檢視的主機埠（8080 留給 SAUVC web_video_server）
 
 say()  { printf '==> %s\n' "$*"; }
 cd "$DVD_DIR" || exit 1
@@ -39,14 +42,13 @@ case "${1:-status}" in
     say "啟動 DVD lite"; "${LITE[@]}" up -d 2>&1 | grep -vE 'orphan' | tail -4
     wait_http 8000 60 && say "管理頁 8000 就緒" ;;
   start-harmonic)
-    say "停 SAUVC 模擬（讓出 8080）"; "$HOME/bin/sauvc-sim" stop >/dev/null 2>&1 || true
-    say "停 DVD lite 與 Classic simulator"
+    say "停 DVD lite 與 Classic simulator（SAUVC 不動）"
     "${LITE[@]}" stop >/dev/null 2>&1; "${FULL[@]}" stop simulator >/dev/null 2>&1
     say "啟動 Classic 飛控 / companion / GCS"
     "${FULL[@]}" up -d --no-build --pull never "${HARM_CLASSIC[@]}" 2>&1 | grep -vE 'orphan' | tail -3
     say "啟動 simulator-harmonic"
     "${HARM[@]}" up -d 2>&1 | grep -vE 'orphan' | tail -2
-    wait_http 8080 90 && say "3D 檢視 8080 就緒" || say "8080 90 秒內沒回應，看 dvd logs"
+    wait_http "$DVD_VIEWER_PORT" 90 && say "3D 檢視 $DVD_VIEWER_PORT 就緒" || say "$DVD_VIEWER_PORT 90 秒內沒回應，看 dvd logs"
     wait_http 8000 60 && say "管理頁 8000 就緒" ;;
   stop)
     say "停 DVD（full、lite 與 harmonic）"

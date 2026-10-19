@@ -29,6 +29,10 @@ def create_app():
 
     app.config['COMPANION_WS_URL'] = os.getenv('COMPANION_WS_URL', '')
 
+    # Full mode: where the browser loads the 3D viewer iframe from (and the
+    # postMessage target origin). Override when the host port is not 8080.
+    app.config['SIM_VIEWER_URL'] = os.getenv('SIM_VIEWER_URL', 'http://localhost:8080')
+
     # ---- DB init & seed ----
     db.init_app(app)
     with app.app_context():
@@ -53,6 +57,7 @@ def create_app():
             'MAV2REST_URL': app.config['MAV2REST_URL'],
             'MAV2REST_POS_PATH': app.config['MAV2REST_POS_PATH'],
             'COMPANION_WS_URL': app.config['COMPANION_WS_URL'],
+            'SIM_VIEWER_URL': app.config['SIM_VIEWER_URL'],
         }
 
     # ---- Routes ----

@@ -1,9 +1,9 @@
 // DVD 3D viewer for Gazebo Harmonic.
 //
-// Served on :8080 (same port and origin the mgmt page's iframe and its
-// postMessage calls already use). The gz-launch websocket server is proxied
-// by nginx on the same origin at /ws, so a single SSH port forward of 8080 is
-// enough for remote viewing.
+// Served on container port 8080; the host port defaults to 8080 and the mgmt
+// page loads it from SIM_VIEWER_URL. The gz-launch websocket server is proxied
+// by nginx on the same origin at /ws, so a single SSH port forward of the
+// viewer port is enough for remote viewing.
 //
 // postMessage protocol kept from the Classic gzweb page:
 //   mgmt -> viewer  "set-stageN-<status>"  stage UI lives in mgmt now; ignored
