@@ -5,7 +5,7 @@ from flask import render_template
 from models import Stage
 from extensions import db
 from . import bp
-from .utils import get_container, LITE
+from .utils import get_container, LITE, HARMONIC
 from .bridge import start_companion_telemetry, stop_companion_telemetry
 
 logger = logging.getLogger(__name__)
@@ -58,9 +58,12 @@ def stage1():
     logger.info("Triggering Stage 1…")
 
     if not LITE:
+        # Harmonic: same gazebo-iris defaults, but the official plugin speaks
+        # the JSON protocol (SITL -> 10.13.0.5:9002, replies auto-detected).
+        model = "--model JSON " if HARMONIC else ""
         command = ("Tools/autotest/sim_vehicle.py -v ArduCopter --add-param-file drone.parm "
                    "--custom-location 37.241861,-115.796917,137,340 -f gazebo-iris "
-                   "--no-rebuild --no-mavproxy --sim-address=10.13.0.5 "
+                   f"{model}--no-rebuild --no-mavproxy --sim-address=10.13.0.5 "
                    "-A '--serial0=uart:/dev/ttyACM0:57600'")
     else:
         command = ("Tools/autotest/sim_vehicle.py -v ArduCopter --add-param-file drone.parm "

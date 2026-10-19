@@ -68,6 +68,9 @@ COPY simulator/harmonic/models/           /Simulator/models/
 COPY simulator/harmonic/worlds/           /Simulator/worlds/
 COPY simulator/harmonic/dvd_sim_bridge.py simulator/harmonic/start.sh /Simulator/
 COPY simulator/harmonic/p1_camera_test.sdf /Simulator/test/p1_camera_test.sdf
+# Same unicast-peer DDS config as the Classic simulator (multicast is off on
+# the simulator network); the compose file points CYCLONEDDS_URI at it.
+COPY simulator/conf/cyclonedds.xml /etc/cyclonedds.xml
 
 WORKDIR /Simulator
 CMD ["/Simulator/start.sh"]

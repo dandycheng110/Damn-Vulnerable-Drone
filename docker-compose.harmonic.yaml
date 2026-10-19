@@ -1,6 +1,12 @@
-# Harmonic migration (work in progress). P1: simulator runtime; P2: world, models, ArduPilot plugin.
+# Harmonic migration (work in progress).
+# P1: simulator runtime; P2: world, models, ArduPilot plugin; P3: SITL over JSON.
 # 用法：docker compose -f docker-compose.harmonic.yaml up -d --build
-# Classic 版（docker-compose.yaml）不受影響，P1 期間可以同時開。
+#
+# P3 起 simulator-harmonic 佔用 Classic simulator 的位置（simulator 網段
+# 10.13.0.5，flight-controller 的 SITL 連 10.13.0.5:9002，DDS peer 也是這個 IP），
+# 所以 Classic 的 simulator 容器要先停，兩者不能同時開。其他 Classic 容器
+# （flight-controller、companion-computer、ground-control-station）照常用
+# docker-compose.yaml 起，網段是同一個（external: simulator）。
 name: dvd-harmonic
 services:
   simulator-harmonic:
@@ -11,9 +17,17 @@ services:
       dockerfile: ./simulator/harmonic/Dockerfile
     environment:
       - DISPLAY=:100
+      - ROS_DOMAIN_ID=42
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - CYCLONEDDS_URI=file:///etc/cyclonedds.xml
     devices:
       - /dev/dxg:/dev/dxg
     volumes:
       - /usr/lib/wsl:/usr/lib/wsl:ro
-    # P1 先用 compose 預設網路，跟正在跑的 Classic 版（10.13.0.5）不衝突；
-    # P3 接飛控時再加入 simulator 網段（10.13.0.5）。
+    networks:
+      simulator:
+        ipv4_address: 10.13.0.5
+
+networks:
+  simulator:
+    external: true

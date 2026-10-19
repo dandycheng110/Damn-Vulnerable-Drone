@@ -5,6 +5,10 @@ import docker
 # LITE flag used for container naming and template toggles
 LITE = str(os.getenv("LITE", "")).lower() in ("1", "true", "yes", "on")
 
+# HARMONIC flag: the simulator is the Gazebo Harmonic one (official
+# ardupilot_gazebo plugin, JSON protocol) instead of Gazebo Classic.
+HARMONIC = str(os.getenv("HARMONIC", "")).lower() in ("1", "true", "yes", "on")
+
 def get_container(name: str):
     """Return docker container object for given base name, appending '-lite' if LITE env is truthy."""
     full_name = f"{name}-lite" if LITE else name
