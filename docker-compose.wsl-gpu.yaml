@@ -1,0 +1,13 @@
+# WSL2 疊加：讓 full 模式 simulator 的 Gazebo 走 Mesa d3d12 → RTX 5070
+# 用法：docker compose -f docker-compose.yaml -f docker-compose.wsl-gpu.yaml up -d
+# 做法同 SAUVC docker-compose.wsl.yml（WSL 沒有 /dev/dri，GPU 是 /dev/dxg）
+services:
+  simulator:
+    environment:
+      - __GLX_VENDOR_LIBRARY_NAME=mesa
+      - LD_LIBRARY_PATH=/usr/lib/wsl/lib
+      - MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA
+    devices:
+      - /dev/dxg:/dev/dxg
+    volumes:
+      - /usr/lib/wsl:/usr/lib/wsl:ro

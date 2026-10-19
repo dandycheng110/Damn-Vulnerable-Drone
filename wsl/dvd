@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# dvd：在這台 WSL 桌機上切換 Damn Vulnerable Drone（full / lite）
+#   full 走 docker-compose.wsl-gpu.yaml，Gazebo 用 Mesa d3d12 → RTX 5070。
+#   full 的 gzweb 佔 8080，跟 SAUVC 的 web_video_server 撞埠，所以 start full 前會先 sauvc-sim stop。
+#   兩種模式都佔 8000/3000，切換時先停另一種（stop，不 down，容器保留）。
+set -uo pipefail
+
+DVD_DIR="$HOME/Damn-vulnerable-Drone"
+FULL=(docker compose -f docker-compose.yaml -f docker-compose.wsl-gpu.yaml)
+LITE=(docker compose -f docker-compose-lite.yaml)
+export WIFI_ENABLED=false
+
+say()  { printf '==> %s\n' "$*"; }
+cd "$DVD_DIR" || exit 1
+
+wait_http() {   # wait_http <port> <秒>
+    local i
+    for ((i = 0; i < $2; i += 3)); do
+        [ "$(curl -s -o /dev/null -w '%{http_code}' "localhost:$1")" != 000 ] && return 0
+        sleep 3
+    done
+    return 1
+}
+
+case "${1:-status}" in
+  start|start-full)
+    say "停 SAUVC 模擬（讓出 8080）"; "$HOME/bin/sauvc-sim" stop >/dev/null 2>&1 || true
+    say "停 DVD lite";               "${LITE[@]}" stop >/dev/null 2>&1
+    say "啟動 DVD full（GPU）";      "${FULL[@]}" up -d 2>&1 | grep -vE 'orphan' | tail -4
+    wait_http 8080 90 && say "gzweb 8080 就緒" || say "gzweb 8080 90 秒內沒回應，看 dvd logs"
+    wait_http 8000 60 && say "管理頁 8000 就緒" ;;
+  start-lite)
+    say "停 DVD full"; "${FULL[@]}" stop >/dev/null 2>&1
+    say "啟動 DVD lite"; "${LITE[@]}" up -d 2>&1 | grep -vE 'orphan' | tail -4
+    wait_http 8000 60 && say "管理頁 8000 就緒" ;;
+  stop)
+    say "停 DVD（full 與 lite）"
+    "${FULL[@]}" stop >/dev/null 2>&1; "${LITE[@]}" stop >/dev/null 2>&1
+    say "已停止。要回 SAUVC：sauvc-sim start" ;;
+  status)
+    docker ps --format '{{.Names}}\t{{.Status}}' | grep -E 'simulator|flight-controller|companion-computer|ground-control-station' \
+        || echo "DVD 沒在跑"
+    if docker ps --format '{{.Names}}' | grep -qx simulator; then
+        docker exec simulator sh -c 'grep -h GL_RENDERER /root/.gazebo/ogre.log 2>/dev/null | tail -1'
+    fi ;;
+  logs)
+    c=simulator; docker ps --format '{{.Names}}' | grep -qx simulator-lite && c=simulator-lite
+    docker logs --tail "${2:-80}" "$c" ;;
+  *)
+    echo "用法：dvd [start|start-full|start-lite|stop|status|logs [行數]]"; exit 2 ;;
+esac
