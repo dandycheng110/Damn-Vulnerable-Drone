@@ -140,7 +140,7 @@
   
         const iframe = document.getElementById('sim-iframe');
         if (iframe && iframe.contentWindow) {
-          try { iframe.contentWindow.postMessage("resetWorldCallback", "http://localhost:8080"); } catch(_) {}
+          try { iframe.contentWindow.postMessage("resetWorldCallback", "{{ SIM_VIEWER_URL }}"); } catch(_) {}
           iframe.src = iframe.src;
         }
   
