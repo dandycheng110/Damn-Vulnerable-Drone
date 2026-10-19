@@ -1,11 +1,12 @@
 # simulator/mgmt/routes/core.py
 import logging
 import os
+import subprocess
 from flask import render_template
 from models import Stage
 from extensions import db
 from . import bp
-from .utils import get_container, LITE
+from .utils import get_container, LITE, HARMONIC
 from .bridge import start_companion_telemetry, stop_companion_telemetry
 
 logger = logging.getLogger(__name__)
@@ -43,7 +44,28 @@ def reset_world():
     # Stop telemetry on companion
     stop_companion_telemetry()
 
+    if HARMONIC:
+        reset_gz_world()
+
     return render_template("pages/simulator.html", output="Reset", current_page="home", LITE=LITE)
+
+
+def reset_gz_world():
+    """Reset the Gazebo Harmonic world (poses, velocities, sim time).
+
+    Classic did this from inside gzweb when it received the
+    resetWorldCallback postMessage; the page reloads the iframe right after
+    posting it, so here the reset is done server side instead. mgmt runs in
+    the simulator-harmonic container, next to gz sim.
+    """
+    cmd = ["gz", "service", "-s", "/world/default/control",
+           "--reqtype", "gz.msgs.WorldControl", "--reptype", "gz.msgs.Boolean",
+           "--timeout", "5000", "--req", "reset: {all: true}"]
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        logger.info("gz world reset: %s", (out.stdout or out.stderr).strip())
+    except Exception as e:
+        logger.error("gz world reset failed: %s", e)
 
 @bp.route("/stage1", methods=["POST"])
 def stage1():
@@ -58,9 +80,12 @@ def stage1():
     logger.info("Triggering Stage 1…")
 
     if not LITE:
+        # Harmonic: same gazebo-iris defaults, but the official plugin speaks
+        # the JSON protocol (SITL -> 10.13.0.5:9002, replies auto-detected).
+        model = "--model JSON " if HARMONIC else ""
         command = ("Tools/autotest/sim_vehicle.py -v ArduCopter --add-param-file drone.parm "
                    "--custom-location 37.241861,-115.796917,137,340 -f gazebo-iris "
-                   "--no-rebuild --no-mavproxy --sim-address=10.13.0.5 "
+                   f"{model}--no-rebuild --no-mavproxy --sim-address=10.13.0.5 "
                    "-A '--serial0=uart:/dev/ttyACM0:57600'")
     else:
         command = ("Tools/autotest/sim_vehicle.py -v ArduCopter --add-param-file drone.parm "

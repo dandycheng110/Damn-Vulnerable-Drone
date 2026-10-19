@@ -1,0 +1,15 @@
+<?xml version='1.0'?>
+<!--
+  gz-launch websocket server for the 3D viewer. Same as the stock
+  /usr/share/gz/gz-launch7/configs/websocket.gzlaunch except the port: 9090
+  instead of 9002, so it is not confused with the ArduPilot JSON port (UDP
+  9002). Only reachable inside the container; nginx proxies it at :8080/ws.
+-->
+<gz version='1.0'>
+  <plugin name="gz::launch::WebsocketServer"
+          filename="gz-launch-websocket-server">
+    <publication_hz>30</publication_hz>
+    <port>9090</port>
+    <max_connections>-1</max_connections>
+  </plugin>
+</gz>

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DVD Simulator</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #1b1f24; font-family: system-ui, sans-serif; }
+    #gz-scene { position: absolute; inset: 0; }
+    #toolbar { position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; z-index: 2; }
+    #toolbar button {
+      background: rgba(20, 24, 30, 0.8); color: #e6e6e6; border: 1px solid #444;
+      border-radius: 4px; padding: 6px 10px; font-size: 13px; cursor: pointer;
+    }
+    #toolbar button:hover { background: rgba(50, 56, 66, 0.9); }
+    #toolbar button.on { border-color: #4caf50; color: #9be29e; }
+    #status {
+      position: absolute; bottom: 10px; left: 10px; z-index: 2; color: #ccc; font-size: 12px;
+      background: rgba(20, 24, 30, 0.7); padding: 4px 8px; border-radius: 4px;
+    }
+    #status.bad { color: #ff8a80; }
+  </style>
+</head>
+<body>
+  <div id="gz-scene"></div>
+  <div id="toolbar">
+    <button id="btn-follow" title="Camera follows the drone">Follow drone</button>
+    <button id="btn-reset-view" title="Back to the default camera">Reset view</button>
+  </div>
+  <div id="status">connecting…</div>
+  <script src="viewer.js"></script>
+</body>
+</html>

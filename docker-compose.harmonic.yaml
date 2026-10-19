@@ -1,0 +1,51 @@
+# Optional Gazebo Harmonic simulator: gz-sim 8 + ROS 2 Humble + the official
+# ardupilot_gazebo plugin (SITL over the JSON protocol) + a gzweb 3 viewer.
+#
+# It replaces only the Classic `simulator` container. flight-controller,
+# companion-computer and ground-control-station still come from
+# docker-compose.yaml, on the same `simulator` network:
+#
+#   docker compose up -d flight-controller companion-computer ground-control-station
+#   docker compose -f docker-compose.harmonic.yaml up -d --build
+#
+# simulator-harmonic takes the Classic simulator's address (10.13.0.5: SITL
+# sends to 10.13.0.5:9002 and it is the DDS peer) and its ports, so the two
+# simulators cannot run at the same time.
+#
+# Rendering is headless (EGL). Without a GPU passed in, Mesa's llvmpipe
+# renders on the CPU; GPU access is host specific, so add it with an
+# override file.
+name: dvd-harmonic
+services:
+  simulator-harmonic:
+    image: dvd-simulator-harmonic:dev
+    container_name: simulator-harmonic
+    build:
+      context: .
+      dockerfile: ./simulator/harmonic/Dockerfile
+    # Same port numbers as Classic by default, but bound to localhost only.
+    # DVD_VIEWER_PORT moves the 3D viewer's host port (e.g. when 8080 is taken);
+    # SIM_VIEWER_URL tells the mgmt page where to load it from.
+    ports:
+      - "127.0.0.1:8000:8000" # mgmt
+      - "127.0.0.1:${DVD_VIEWER_PORT:-8080}:8080" # 3D viewer (+ /ws websocket)
+    environment:
+      - SIM_VIEWER_URL=http://localhost:${DVD_VIEWER_PORT:-8080}
+      - DISPLAY=:100
+      - ROS_DOMAIN_ID=42
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - CYCLONEDDS_URI=file:///etc/cyclonedds.xml
+      - LITE=false
+      - HARMONIC=true
+      - WIFI_ENABLED
+    volumes:
+      # mgmt drives the other containers through the Docker API, as in Classic.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./simulator/mgmt:/Simulator/mgmt
+    networks:
+      simulator:
+        ipv4_address: 10.13.0.5
+
+networks:
+  simulator:
+    external: true

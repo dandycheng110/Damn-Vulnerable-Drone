@@ -8,3 +8,5 @@ mav.parm
 *.csv
 *.netxml
 *.pyc
+simulator/harmonic/viewer/node_modules
+simulator/harmonic/viewer/dist
