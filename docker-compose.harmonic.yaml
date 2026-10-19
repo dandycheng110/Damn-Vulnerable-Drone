@@ -1,0 +1,18 @@
+# Harmonic migration (work in progress). P1: simulator runtime only.
+# 用法：docker compose -f docker-compose.harmonic.yaml up -d --build
+# Classic 版（docker-compose.yaml）不受影響，P1 期間可以同時開。
+services:
+  simulator-harmonic:
+    image: dvd-simulator-harmonic:dev
+    container_name: simulator-harmonic
+    build:
+      context: .
+      dockerfile: ./simulator/harmonic/Dockerfile
+    environment:
+      - DISPLAY=:100
+    devices:
+      - /dev/dxg:/dev/dxg
+    volumes:
+      - /usr/lib/wsl:/usr/lib/wsl:ro
+    # P1 先用 compose 預設網路，跟正在跑的 Classic 版（10.13.0.5）不衝突；
+    # P3 接飛控時再加入 simulator 網段（10.13.0.5）。
