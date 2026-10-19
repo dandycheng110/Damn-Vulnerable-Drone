@@ -1,9 +1,10 @@
 # SIMULATOR CONTAINER (Harmonic) — Gazebo Harmonic + ROS 2 Humble on Ubuntu 22.04
 #
 # Replaces the Classic 11 / Foxy / gzweb 1.4 simulator in simulator/Dockerfile.
-# P1 scope: the base runtime only (gz sim, ros_gz, Mesa with the d3d12 driver
-# for WSL2). Models, the ArduPilot plugin, the web viewer and the mgmt app are
-# added in later phases.
+# P1: base runtime (gz sim, ros_gz, Mesa with the d3d12 driver for WSL2).
+# P2: official ardupilot_gazebo plugin, DVD world and models in SDF 1.9, and
+#     dvd_sim_bridge.py (camera + gimbal glue to ROS 2).
+# The web viewer and the mgmt app are added in later phases.
 FROM ros:humble-ros-base-jammy
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -28,6 +29,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3-pip && \
     rm -rf /var/lib/apt/lists/*
 
+# Official ArduPilot plugin (JSON protocol), pinned. Its CMake also builds the
+# GStreamer camera plugin, so the GStreamer/OpenCV dev packages are required
+# even though DVD streams video from the companion instead.
+ARG ARDUPILOT_GAZEBO_COMMIT=082a0fe231f6e63bc8d1598f1cba461d9e2ea7f5
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git build-essential cmake \
+        libgz-sim8-dev rapidjson-dev \
+        libopencv-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev && \
+    git clone https://github.com/ArduPilot/ardupilot_gazebo.git /opt/ardupilot_gazebo && \
+    cd /opt/ardupilot_gazebo && git checkout ${ARDUPILOT_GAZEBO_COMMIT} && \
+    GZ_VERSION=harmonic cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo && \
+    cmake --build build -j"$(nproc)" && \
+    rm -rf /var/lib/apt/lists/*
+
 # WSL2: the GPU is /dev/dxg and the user-mode driver lives in /usr/lib/wsl/lib
 # (mounted by docker-compose.harmonic.yaml). Mesa's d3d12 driver renders on it.
 ENV __GLX_VENDOR_LIBRARY_NAME=mesa \
@@ -36,7 +51,23 @@ ENV __GLX_VENDOR_LIBRARY_NAME=mesa \
     RMW_IMPLEMENTATION=rmw_cyclonedds_cpp \
     ROS_DOMAIN_ID=42
 
+# Model lookup order: DVD models first, then the official ardupilot_gazebo
+# ones (iris_with_standoffs, gimbal_small_2d meshes, runway).
+ENV GZ_SIM_SYSTEM_PLUGIN_PATH=/opt/ardupilot_gazebo/build \
+    GZ_SIM_RESOURCE_PATH=/Simulator/models:/opt/ardupilot_gazebo/models:/opt/ardupilot_gazebo/worlds
+
+# Static scene models are reused unchanged from the Classic assets (plain
+# meshes with embedded textures, no OGRE material scripts).
+COPY simulator/assets/models/hacker_van   /Simulator/models/hacker_van
+COPY simulator/assets/models/hacker_desk  /Simulator/models/hacker_desk
+COPY simulator/assets/models/gcs_table    /Simulator/models/gcs_table
+COPY simulator/assets/models/gcs_chair    /Simulator/models/gcs_chair
+COPY simulator/assets/models/operator     /Simulator/models/operator
+COPY simulator/assets/models/laptop       /Simulator/models/laptop
+COPY simulator/harmonic/models/           /Simulator/models/
+COPY simulator/harmonic/worlds/           /Simulator/worlds/
+COPY simulator/harmonic/dvd_sim_bridge.py simulator/harmonic/start.sh /Simulator/
 COPY simulator/harmonic/p1_camera_test.sdf /Simulator/test/p1_camera_test.sdf
 
 WORKDIR /Simulator
-CMD ["bash", "-c", "rm -f /tmp/.X100-lock; Xvfb :100 -screen 0 1600x1200x24 & sleep infinity"]
+CMD ["/Simulator/start.sh"]

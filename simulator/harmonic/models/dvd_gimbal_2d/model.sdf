@@ -1,0 +1,171 @@
+<?xml version='1.0'?>
+<!--
+  DVD 2-axis gimbal, Harmonic port of simulator/assets/models/gimbal_small_2d.
+
+  Differences from the Classic model:
+  - gazebo.material scripts -> plain ambient/diffuse colours.
+  - use_parent_model_frame dropped (SDF 1.9); the joint frame is the child
+    frame, which here has the same orientation as the model frame.
+  - gazebo_ros_camera -> native gz camera sensor. The gz topic is
+    webcam/image_raw; simulator/harmonic/dvd_sim_bridge.py relays it to
+    the ROS 2 topic /webcam/image_raw with SensorData QoS, which the companion
+    and the rogue-publisher attack both rely on.
+  - Meshes come from the official ardupilot_gazebo gimbal_small_2d model.
+
+  Only base_link + tilt_link like the DVD original: pan is the
+  iris_gimbal_mount joint in dvd_iris.
+-->
+<sdf version='1.9'>
+  <model name='dvd_gimbal_2d'>
+    <link name='base_link'>
+      <inertial>
+        <mass>0.2</mass>
+        <inertia>
+          <ixx>0.0001</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.0001</iyy>
+          <iyz>0</iyz>
+          <izz>0.0001</izz>
+        </inertia>
+      </inertial>
+      <visual name='base_main_viz'>
+        <geometry>
+          <mesh>
+            <scale>0.001 0.001 0.001</scale>
+            <uri>model://gimbal_small_2d/meshes/base_main.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.1 0.1 0.1 1</ambient>
+          <diffuse>0.1 0.1 0.1 1</diffuse>
+          <specular>0.01 0.01 0.01 1</specular>
+        </material>
+      </visual>
+      <visual name='base_arm_viz'>
+        <geometry>
+          <mesh>
+            <scale>0.001 0.001 0.001</scale>
+            <uri>model://gimbal_small_2d/meshes/base_arm.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.1 0.1 0.1 1</ambient>
+          <diffuse>0.1 0.1 0.1 1</diffuse>
+          <specular>0.01 0.01 0.01 1</specular>
+        </material>
+      </visual>
+      <collision name='base_col'>
+        <pose>0.01 0.075 -0.025 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.1 0.05 0.15</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+
+    <link name='tilt_link'>
+      <inertial>
+        <mass>0.01</mass>
+        <inertia>
+          <ixx>0.00001</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.00001</iyy>
+          <iyz>0</iyz>
+          <izz>0.00001</izz>
+        </inertia>
+      </inertial>
+      <visual name='tilt_viz'>
+        <pose>0 0 -0.005 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>0.001 0.001 0.001</scale>
+            <uri>model://gimbal_small_2d/meshes/tilt.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.4 0.4 0.4 1</ambient>
+          <diffuse>0.4 0.4 0.4 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+        </material>
+      </visual>
+      <collision name='tilt_col'>
+        <pose>0 0 -0.005 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>0.001 0.001 0.001</scale>
+            <uri>model://gimbal_small_2d/meshes/tilt.dae</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <visual name='camera_viz'>
+        <pose>0 0 0.02 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.025</radius>
+            <length>0.050</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.4 0.4 0.4 1</ambient>
+          <diffuse>0.4 0.4 0.4 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+        </material>
+      </visual>
+      <collision name='camera_col'>
+        <pose>0 0 0.02 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.025</radius>
+            <length>0.050</length>
+          </cylinder>
+        </geometry>
+      </collision>
+
+      <sensor name="webcam" type="camera">
+        <gz_frame_id>camera_link</gz_frame_id>
+        <pose degrees="true">0 0 0 -90 -90 0</pose>
+        <topic>webcam/image_raw</topic>
+        <camera>
+          <camera_info_topic>webcam/camera_info</camera_info_topic>
+          <horizontal_fov>2.0</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>480</height>
+          </image>
+          <clip>
+            <near>0.05</near>
+            <far>15000</far>
+          </clip>
+        </camera>
+        <always_on>1</always_on>
+        <update_rate>10</update_rate>
+        <visualize>1</visualize>
+      </sensor>
+    </link>
+
+    <joint name='tilt_joint' type='revolute'>
+      <parent>base_link</parent>
+      <child>tilt_link</child>
+      <pose>0 0 0.02 0 0 0</pose>
+      <axis>
+        <xyz>1 0 0</xyz>
+        <dynamics>
+          <damping>0.5</damping>
+        </dynamics>
+        <limit>
+          <lower>-0.1</lower>
+          <upper>3.14159265</upper>
+          <effort>10</effort>
+        </limit>
+      </axis>
+    </joint>
+
+    <!-- tilt_joint state; the parent model's publisher can't see nested joints -->
+    <plugin filename="gz-sim-joint-state-publisher-system"
+        name="gz::sim::systems::JointStatePublisher">
+    </plugin>
+  </model>
+</sdf>

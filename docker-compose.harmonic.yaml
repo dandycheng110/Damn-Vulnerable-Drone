@@ -1,6 +1,7 @@
-# Harmonic migration (work in progress). P1: simulator runtime only.
+# Harmonic migration (work in progress). P1: simulator runtime; P2: world, models, ArduPilot plugin.
 # 用法：docker compose -f docker-compose.harmonic.yaml up -d --build
 # Classic 版（docker-compose.yaml）不受影響，P1 期間可以同時開。
+name: dvd-harmonic
 services:
   simulator-harmonic:
     image: dvd-simulator-harmonic:dev
