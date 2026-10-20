@@ -7,27 +7,93 @@
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: #1b1f24; font-family: system-ui, sans-serif; }
     #gz-scene { position: absolute; inset: 0; }
-    #toolbar { position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; z-index: 2; }
-    #toolbar button {
-      background: rgba(20, 24, 30, 0.8); color: #e6e6e6; border: 1px solid #444;
-      border-radius: 4px; padding: 6px 10px; font-size: 13px; cursor: pointer;
+    .panel {
+      position: absolute; z-index: 2; color: #e6e6e6; font-size: 12px;
+      background: rgba(20, 24, 30, 0.8); border: 1px solid #333; border-radius: 4px;
     }
-    #toolbar button:hover { background: rgba(50, 56, 66, 0.9); }
-    #toolbar button.on { border-color: #4caf50; color: #9be29e; }
-    #status {
-      position: absolute; bottom: 10px; left: 10px; z-index: 2; color: #ccc; font-size: 12px;
-      background: rgba(20, 24, 30, 0.7); padding: 4px 8px; border-radius: 4px;
+    #toolbar { top: 10px; left: 10px; display: flex; flex-direction: column; gap: 6px; padding: 6px; }
+    .row { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+    .row .label { color: #9aa0a6; width: 52px; }
+    button, select {
+      background: rgba(30, 34, 42, 0.9); color: #e6e6e6; border: 1px solid #444;
+      border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer; font-family: inherit;
     }
+    button:hover:not(:disabled) { background: rgba(55, 62, 74, 0.95); }
+    button:disabled { opacity: 0.4; cursor: default; }
+    button.on { border-color: #4caf50; color: #9be29e; }
+    #telemetry { top: 10px; right: 10px; padding: 8px 10px; min-width: 190px; }
+    #telemetry h3 { margin: 6px 0 3px; font-size: 11px; font-weight: 600; color: #9aa0a6; text-transform: uppercase; letter-spacing: 0.04em; }
+    #telemetry h3:first-child { margin-top: 0; }
+    #telemetry dl { margin: 0; display: grid; grid-template-columns: auto auto; column-gap: 12px; row-gap: 1px; }
+    #telemetry dt { color: #9aa0a6; }
+    #telemetry dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+    #sim-state.paused { color: #ffcc80; }
+    #camera { right: 10px; bottom: 10px; width: 320px; overflow: hidden; }
+    #camera .head { display: flex; justify-content: space-between; align-items: center; padding: 3px 4px 3px 8px; }
+    #camera .head button { padding: 1px 6px; }
+    #camera .view { position: relative; aspect-ratio: 4 / 3; background: #000; }
+    #camera img { display: block; width: 100%; height: 100%; object-fit: contain; }
+    #camera .msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #888; text-align: center; padding: 0 12px; }
+    #camera.collapsed .view { display: none; }
+    #status { bottom: 10px; left: 10px; padding: 4px 8px; color: #ccc; }
     #status.bad { color: #ff8a80; }
   </style>
 </head>
 <body>
   <div id="gz-scene"></div>
-  <div id="toolbar">
-    <button id="btn-follow" title="Camera follows the drone">Follow drone</button>
-    <button id="btn-reset-view" title="Back to the default camera">Reset view</button>
+
+  <div id="toolbar" class="panel">
+    <div class="row" id="camera-modes">
+      <span class="label">Camera</span>
+      <button data-mode="free" class="on" title="Orbit with the mouse">Free</button>
+      <button data-mode="chase" title="Behind the drone, turning with it">Chase</button>
+      <button data-mode="third" title="Third person; drag to change the offset">Third person</button>
+      <button data-mode="first" title="On board, looking forward">First person</button>
+      <button data-mode="top" title="Straight down onto the drone">Top-down</button>
+      <button id="btn-reset-view" title="Back to the default camera">Reset view</button>
+    </div>
+    <div class="row">
+      <span class="label">Sim</span>
+      <button id="btn-play" title="Pause or resume the Gazebo world">Pause</button>
+      <select id="step-size" title="Physics steps per click (1 step = 1 ms)">
+        <option value="1">1 step</option>
+        <option value="10">10 steps</option>
+        <option value="100" selected>100 steps</option>
+        <option value="1000">1000 steps</option>
+      </select>
+      <button id="btn-step" disabled title="Advance the paused world">Step</button>
+    </div>
   </div>
-  <div id="status">connecting…</div>
+
+  <div id="telemetry" class="panel">
+    <h3>World</h3>
+    <dl>
+      <dt>State</dt><dd id="sim-state">–</dd>
+      <dt>Sim time</dt><dd id="sim-time">–</dd>
+      <dt>Real-time factor</dt><dd id="sim-rtf">–</dd>
+    </dl>
+    <h3>Drone</h3>
+    <dl>
+      <dt>Height</dt><dd id="d-alt">–</dd>
+      <dt>Climb rate</dt><dd id="d-climb">–</dd>
+      <dt>Ground speed</dt><dd id="d-speed">–</dd>
+      <dt>Heading</dt><dd id="d-heading">–</dd>
+      <dt>Roll / pitch</dt><dd id="d-att">–</dd>
+    </dl>
+  </div>
+
+  <div id="camera" class="panel">
+    <div class="head">
+      <span title="MJPEG feed from the companion computer (/camera/video_feed), i.e. what the drone's video pipeline delivers">Companion camera</span>
+      <button id="btn-camera" title="Show or hide the feed">Hide</button>
+    </div>
+    <div class="view">
+      <img id="camera-img" alt="">
+      <div class="msg" id="camera-msg">connecting…</div>
+    </div>
+  </div>
+
+  <div id="status" class="panel">connecting…</div>
   <script src="viewer.js"></script>
 </body>
 </html>
